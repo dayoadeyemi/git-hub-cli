@@ -1,0 +1,19 @@
+{
+  "name": "git-hub",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "git-hub": "index.js"
+  },
+  "author": "dayoadeyemi",
+  "license": "ISC",
+  "dependencies": {
+    "commander": "^2.9.0",
+    "highland": "^2.8.1",
+    "ramda": "^0.21.0"
+  }
+}
