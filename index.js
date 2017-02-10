@@ -20,15 +20,14 @@ if (config.remote && config.remote.origin && config.remote.origin.url &&
     throw new Error('must have a github origin');
 }
 
-
-program
-  .version('1.0.0')
-  .command('pulls <action>')
-  .option("--title <title>", '', current.branch)
-  .option("--head <head>", '', current.branch)
-  .option("--base <base>", '', config.gitflow.develop)
-  .option("--body <body>", '', '')
-  .action(function (action, command) {
+/**
+ *
+ *
+ * @param {Object} postData
+ * @param {string} action
+ * @param {?Array.<string>} params
+ */
+function repoReq(postData, action, params){
     const reqOptions = {
         auth: config.user.username + ':' + config.user.token,
         hostname: 'api.github.com',
@@ -38,20 +37,41 @@ program
             'Content-Type': 'application/json',
         }
     }
+    reqOptions.path = ['', 'repos', current.owner, current.repo, action].concat(params || []).join('/');
+    console.log(reqOptions)
+    const request = https.request(reqOptions, (res) => {
+        let body = '';
+        res.setEncoding('utf8');
+        res.on('data', (chunk) => body += chunk);
+        res.on('end', () => {
+            body = JSON.parse(body);
+            console.log(body);
+        })
+    });
+    request.write(JSON.stringify(postData));
+    request.end();
+}
+
+program
+  .version('1.0.0')
+  .command('pulls <action>')
+  .option("--title <title>", '', current.branch)
+  .option("--head <head>", '', current.branch)
+  .option("--base <base>", '', config.gitflow.develop)
+  .option("--body <body>", '', '')
+  .action(function (action, command) {
     if (action === 'create') {
-        reqOptions.path = `/repos/${current.owner}/${current.repo}/pulls`;
-        const postData = command.opts();
-        const request = https.request(reqOptions, (res) => {
-            let body = '';
-            res.setEncoding('utf8');
-            res.on('data', (chunk) => body += chunk);
-            res.on('end', () => {
-                body = JSON.parse(body);
-                console.log(body);
-            })
-        });
-        request.write(JSON.stringify(postData));
-        request.end();
+        repoReq(command.opts(), 'pulls')
+    } else {
+        throw new Error(`Unkown action: ${action}`)
+    }
+  })
+  .command('merges <action>')
+  .option("--head <head>", '', current.branch)
+  .option("--base <base>", '', config.gitflow.develop)
+  .action(function (action, command) {
+    if (action === 'create') {
+        repoReq(command.opts(), 'merges')
     } else {
         throw new Error(`Unkown action: ${action}`)
     }
