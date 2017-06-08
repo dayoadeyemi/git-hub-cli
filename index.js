@@ -37,15 +37,16 @@ function repoReq(postData, action, params){
             'Content-Type': 'application/json',
         }
     }
-    reqOptions.path = ['', 'repos', current.owner, current.repo, action].concat(params || []).join('/');
-    console.log(reqOptions)
+    reqOptions.path = ['', 'repos', current.owner, postData.repo || current.repo, action].concat(params || []).join('/');
+    delete postData.repo
+    // console.log(reqOptions)
     const request = https.request(reqOptions, (res) => {
         let body = '';
         res.setEncoding('utf8');
         res.on('data', (chunk) => body += chunk);
         res.on('end', () => {
             body = JSON.parse(body);
-            console.log(body);
+            console.log(body.html_url);
         })
     });
     request.write(JSON.stringify(postData));
@@ -65,7 +66,24 @@ program
     } else {
         throw new Error(`Unkown action: ${action}`)
     }
+  });
+
+program
+  .command('issues <action>')
+  .option("--title <title>", 'Required. The title of the issue.', current.branch)
+  .option("--labels <labels>", '', [])
+  .option("--body <body>", 'The contents of the issue.', '')
+  .option("--repo <repo>", 'The repo for actions', '')
+  .option("--assignees <assignees>", 'Logins for Users to assign to this issue. NOTE: Only users with push access can set assignees for new issues. Assignees are silently dropped otherwise.', [config.user.username])
+  .action(function (action, command) {
+    if (action === 'create') {
+        repoReq(command.opts(), 'issues')
+    } else {
+        throw new Error(`Unkown action: ${action}`)
+    }
   })
+
+program
   .command('merges <action>')
   .option("--head <head>", '', current.branch)
   .option("--base <base>", '', config.gitflow.develop)
