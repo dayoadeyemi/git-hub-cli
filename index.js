@@ -64,7 +64,6 @@ program
   .option("--body <body>", '', '')
   .action(function (action, command) {
     if (action === 'create') {
-        execSync(`git push origin ${command.opts().head}`)
         repoReq(command.opts(), 'pulls')
     } else {
         throw new Error(`Unkown action: ${action}`)
