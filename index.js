@@ -3,6 +3,7 @@
 const config = require('./config.js');
 const https = require('https');
 const program = require('commander');
+const execSync = require('child_process').execSync;
 const current = {
     branch: require('child_process').execSync('git rev-parse --abbrev-ref HEAD').toString().trim(),
 };
@@ -46,7 +47,7 @@ function repoReq(postData, action, params){
         res.on('data', (chunk) => body += chunk);
         res.on('end', () => {
             body = JSON.parse(body);
-            console.log(body.html_url);
+            console.log(body.html_url||body);
         })
     });
     request.write(JSON.stringify(postData));
@@ -55,6 +56,7 @@ function repoReq(postData, action, params){
 
 program
   .version('1.0.0')
+  .usage('[options]')
   .command('pulls <action>')
   .option("--title <title>", '', current.branch)
   .option("--head <head>", '', current.branch)
@@ -62,6 +64,7 @@ program
   .option("--body <body>", '', '')
   .action(function (action, command) {
     if (action === 'create') {
+        execSync(`git push origin ${command.opts().head}`)
         repoReq(command.opts(), 'pulls')
     } else {
         throw new Error(`Unkown action: ${action}`)
