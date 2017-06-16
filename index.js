@@ -70,10 +70,11 @@ function repoReq(method, resource, postData, params = []) {
             res.on('data', (chunk) => body += chunk);
             res.on('end', () => {
                 const json = JSON.parse(body);
+                console.log(json);
                 if (json.html_url)
                     resolve(json);
                 else
-                    reject(new Error(`Got "${json.message}" requesting ${reqOptions.path}, see ${json.documention_url} from more information`));
+                    reject(new Error(`Got "${json.message}", when attempting to ${method} on ${reqOptions.path}, see ${json.documentation_url} from more information`));
             });
         });
         if (method !== 'GET')

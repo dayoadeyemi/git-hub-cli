@@ -72,7 +72,7 @@ function repoReq(
       res.on('end', () => {
         const json = JSON.parse(body);
         if (json.html_url) resolve(json)
-        else reject(new Error(`Got "${json.message}" requesting ${reqOptions.path}, see ${json.documention_url} from more information`))
+        else reject(new Error(`Got "${json.message}", when attempting to ${method} on ${reqOptions.path}, see ${json.documentation_url} from more information`))
       })
     });
     if (method !== 'GET') request.write(JSON.stringify(postData));
