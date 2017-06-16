@@ -3,7 +3,7 @@
 import { config } from './config'
 import * as https from 'https'
 import * as program from 'commander'
-import { spawnSync } from 'child_process'
+import { spawnSync, execSync } from 'child_process'
 import { spawn } from 'child_pty'
 import { Readable } from 'stream'
 import * as marked from 'marked'
@@ -14,8 +14,7 @@ marked.setOptions({
 });
 
 const current = {
-  branch: require('child_process')
-    .spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'])
+  branch: execSync('git rev-parse --abbrev-ref HEAD')
     .toString()
     .trim(),
   owner: '',
@@ -66,13 +65,22 @@ function repoReq(
     }
     delete postData.repo
     const request = https.request(reqOptions, (res) => {
+      console.log(res.headers)
       let body = '';
       res.setEncoding('utf8');
-      res.on('data', (chunk) => body += chunk);
+      res.on('data', (chunk) => body += chunk)
+      res.on('error', reject)
       res.on('end', () => {
-        const json = JSON.parse(body);
+        console.log(body, reqOptions.path)
+        let json
+        try {
+          json = JSON.parse(body);
+        }
+        catch (e){
+          return reject('Failed to parse response from GitHub')
+        }
         if (json.html_url) resolve(json)
-        else reject(new Error(`Got "${json.message}", when attempting to ${method} on ${reqOptions.path}, see ${json.documentation_url} from more information`))
+        else reject(new Error(`Got "${json.message}", when attempting to ${method} on ${reqOptions.path}, see ${json.documentation_url} from more information ${json.errors?'\nErrors:\n'+JSON.stringify(json.errors, null,2):''}`))
       })
     });
     if (method !== 'GET') request.write(JSON.stringify(postData));
@@ -87,10 +95,11 @@ program
   .option("--title <title>", 'The title of the pull request.', current.branch)
   .option("--head <head>", 'The name of the branch where your changes are implemented. For cross-repository pull requests in the same network, namespace head with a user like this: username:branch', current.branch)
   .option("--base <base>", 'The name of the branch you want the changes pulled into. This should be an existing branch on the current repository. You cannot submit a pull request to one repository that requests a merge to a base of another repository.', config.gitflow.develop)
-  .option("--body <body>", 'The contents of the pull request.', '')
+  .option("--body <body>", 'The contents of the pull request.', `Enables ${current.issue_url}`)
   .action(async function (action, command) {
     if (action === 'create') {
-      repoReq('POST', 'pulls', command.opts())
+      const json = await repoReq('POST', 'pulls', command.opts())
+      console.log(json.html_url)
     } else {
       throw new Error(`Unkown action: ${action}`)
     }
@@ -105,7 +114,8 @@ program
   .option("--assignees <assignees>", 'Logins for Users to assign to this issue. NOTE: Only users with push access can set assignees for new issues. Assignees are silently dropped otherwise.', [config.user.username])
   .action(async function (action, command) {
     if (action === 'create') {
-      repoReq('POST', 'issues', command.opts())
+      const json = await repoReq('POST', 'issues', command.opts())
+      console.log(json.html_url)
     } else {
       throw new Error(`Unkown action: ${action}`)
     }
@@ -117,7 +127,8 @@ program
   .option("--base <base>", '', config.gitflow.develop)
   .action(async function (action, command) {
     if (action === 'create') {
-      repoReq('POST', 'merges', command.opts())
+      const json = await repoReq('POST', 'merges', command.opts())
+      console.log(json.html_url)
     } else {
       throw new Error(`Unkown action: ${action}`)
     }
@@ -164,6 +175,7 @@ async function showIssue(issue_url){
       throw new Error('Failed to get the issue from GitHub')
     }
 }
+
 program
   .command('start <issue_url>')
   .description('Set the active GitHUb issue url')
