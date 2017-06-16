@@ -2,22 +2,30 @@
   "name": "git-hub",
   "version": "1.0.1",
   "description": "",
-  "main": "index.js",
+  "main": "ts-node index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "bin": {
-    "git-hub": "index.js"
+    "git-hub": "index.ts"
   },
-  "repository" : {
-    "type" : "git",
-    "url" : "https://github.com/dayoadeyemi/git-hub-cli.git"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dayoadeyemi/git-hub-cli.git"
   },
   "author": "dayoadeyemi",
   "license": "ISC",
   "dependencies": {
+    "child_pty": "^3.0.7",
     "commander": "^2.9.0",
     "highland": "^2.8.1",
-    "ramda": "^0.21.0"
+    "ramda": "^0.21.0",
+    "ts-node": "^3.0.6",
+    "typescript": "^2.3.4"
+  },
+  "devDependencies": {
+    "@types/commander": "^2.9.1",
+    "@types/marked": "0.0.28",
+    "@types/node": "^7.0.31"
   }
 }
