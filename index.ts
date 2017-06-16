@@ -5,6 +5,13 @@ import * as https from 'https'
 import * as program from 'commander'
 import { spawnSync } from 'child_process'
 import { spawn } from 'child_pty'
+import { Readable } from 'stream'
+import * as marked from 'marked'
+import * as TerminalRenderer from 'marked-terminal'
+
+marked.setOptions({
+  renderer: new TerminalRenderer()
+});
 
 const current = {
   branch: require('child_process')
@@ -13,7 +20,8 @@ const current = {
     .trim(),
   owner: '',
   repo: '',
-  issue: config.hub && config.hub.issue
+  issue_url: config.hub && config.hub.issue && config.hub.issue.url || '',
+  issue_title: config.hub && config.hub.issue && config.hub.issue.title || ''
 };
 
 //console.log(config);
@@ -131,27 +139,59 @@ function setCurrentIssue(issue){
   spawnSync('git', ['config', '--global', '--add', 'hub.issue.repo', issue.repo])
   spawnSync('git', ['config', '--global', '--add', 'hub.issue.number', issue.number])
 }
-program
-  .command('start <issue>')
-  .description('Set the active GitHUb issue url')
-  .action(async function (issue, command) {
-    const match = issue.match(/github\.com\/(\w+)\/(\w+)\/issues\/(\d+)$/)
+
+function showMarkdown(doc: string){
+  const s = new Readable()
+  s.push(marked(doc))
+  s.push(null)
+  const cp = spawn('less', ['-R'], { stdio: ['pipe', 1, 2, 'ipc']})
+  s.pipe(cp.stdin)
+}
+
+async function showIssue(issue_url){
+    const match = issue_url.match(/github\.com\/(\w+)\/(\w+)\/issues\/(\d+)$/)
     if (!match){
-      console.log('Not a vaild git hub issue url')
+      throw new Error('Not a vaild git hub issue url')
     }
     const [url, owner, repo, number] = match
-    const json = await repoReq('GET', 'issues', { owner, repo }, [number])
+    let title: string
+    try {
+      const json = await repoReq('GET', 'issues', { owner, repo }, [number])
+      title = json.title
+      showMarkdown(json.body)
+      return { url, title, owner, repo, number }
+    } catch (e) {
+      throw new Error('Failed to get the issue from GitHub')
+    }
+}
+program
+  .command('start <issue_url>')
+  .description('Set the active GitHUb issue url')
+  .action(async function (issue_url, command) {
+    const issue = await showIssue(issue_url)
+    console.log('Current the issue is set to ' + issue.title)
+    console.log('    https://api.github.com/' + issue.url)
+    setCurrentIssue(issue)
   });
 
 program
   .command('end')
   .description('Remove the active GitHUb issue')
   .action(function (action, command) {
+    if (current.issue_title) console.log('Stopped working on ' + current.issue_title)
+    else console.log('Not working on any issue')
+    clearCurrentIssue()
   });
 
 program
   .command('current')
   .description('Show the active GitHub issue')
-  .action(function (action, command) {
+  .action(async function (action, command) {
+    if (current.issue_url) {
+      const issue = await showIssue(current.issue_url)
+      console.log('Current the issue is set to ' + issue.title)
+      console.log('    https://api.github.com/' + issue.url)
+    }
+    else console.log('Not working on any issue')
   });
 program.parse(process.argv);

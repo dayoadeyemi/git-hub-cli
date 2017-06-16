@@ -2,12 +2,12 @@
   "name": "git-hub",
   "version": "1.0.1",
   "description": "",
-  "main": "ts-node index.ts",
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "bin": {
-    "git-hub": "index.ts"
+    "git-hub": "index.js"
   },
   "repository": {
     "type": "git",
@@ -19,6 +19,8 @@
     "child_pty": "^3.0.7",
     "commander": "^2.9.0",
     "highland": "^2.8.1",
+    "marked": "^0.3.6",
+    "marked-terminal": "^2.0.0",
     "ramda": "^0.21.0",
     "ts-node": "^3.0.6",
     "typescript": "^2.3.4"
