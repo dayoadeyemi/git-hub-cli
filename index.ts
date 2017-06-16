@@ -8,6 +8,21 @@ import { spawn } from 'child_pty'
 import { Readable } from 'stream'
 import * as marked from 'marked'
 import * as TerminalRenderer from 'marked-terminal'
+import * as readline from 'readline'
+
+
+function input(){
+  return new Promise(resolve => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+    rl.on('line', (answer) => {
+      rl.close();
+      resolve(answer)
+    });
+  })
+}
 
 marked.setOptions({
   renderer: new TerminalRenderer()
@@ -205,5 +220,32 @@ program
       console.log('    https://api.github.com/' + issue.url)
     }
     else console.log('Not working on any issue')
+  });
+
+program
+  .command('init')
+  .description('Initialize the git hub tool')
+  .action(async function (action, command) {
+    console.log("  What is your GitHub Username?")
+    const username = await input()
+    console.log('  What is your GitHub Token?')
+    console.log('  If you havent got one already you can generate one at:')
+    console.log('      https://github.com/settings/tokens/new')
+    console.log('  Just remember to enable the "repo" permission!')
+    const token = await input()
+    console.log('  By default, what branch are you going to target your pull requests to?')
+    console.log('  Note using the option "--base <branch>" you can override this whenever you want!')
+    const develop = await input()
+    execSync(`git config --unset-all --global user.username`)
+    execSync(`git config --add --global user.username ${username}`)
+    execSync(`git config --unset-all --global user.token`)
+    execSync(`git config --add --global user.token ${token}`)
+    execSync(`git config --unset-all --global gitflow.develop`)
+    execSync(`git config --add --global gitflow.develop ${develop}`)
+    console.log('  You have been set up to use the git hub CLI!')
+    console.log('  Now you can create pull requests assigned to issues with ease')
+    console.log('  When you are working on an issue you can set it as the default')
+    console.log('  Just type:-')
+    console.log('      git hub start <url of issue>')
   });
 program.parse(process.argv);

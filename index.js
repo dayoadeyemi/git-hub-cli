@@ -17,6 +17,19 @@ const child_pty_1 = require("child_pty");
 const stream_1 = require("stream");
 const marked = require("marked");
 const TerminalRenderer = require("marked-terminal");
+const readline = require("readline");
+function input() {
+    return new Promise(resolve => {
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+        rl.on('line', (answer) => {
+            rl.close();
+            resolve(answer);
+        });
+    });
+}
 marked.setOptions({
     renderer: new TerminalRenderer()
 });
@@ -215,6 +228,34 @@ program
         }
         else
             console.log('Not working on any issue');
+    });
+});
+program
+    .command('init')
+    .description('Initialize the git hub tool')
+    .action(function (action, command) {
+    return __awaiter(this, void 0, void 0, function* () {
+        console.log("  What is your GitHub Username?");
+        const username = yield input();
+        console.log('  What is your GitHub Token?');
+        console.log('  If you havent got one already you can generate one at:');
+        console.log('      https://github.com/settings/tokens/new');
+        console.log('  Just remember to enable the "repo" permission!');
+        const token = yield input();
+        console.log('  By default, what branch are you going to target your pull requests to?');
+        console.log('  Note using the option "--base <branch>" you can override this whenever you want!');
+        const develop = yield input();
+        child_process_1.execSync(`git config --unset-all --global user.username`);
+        child_process_1.execSync(`git config --add --global user.username ${username}`);
+        child_process_1.execSync(`git config --unset-all --global user.token`);
+        child_process_1.execSync(`git config --add --global user.token ${token}`);
+        child_process_1.execSync(`git config --unset-all --global gitflow.develop`);
+        child_process_1.execSync(`git config --add --global gitflow.develop ${develop}`);
+        console.log('  You have been set up to use the git hub CLI!');
+        console.log('  Now you can create pull requests assigned to issues with ease');
+        console.log('  When you are working on an issue you can set it as the default');
+        console.log('  Just type:-');
+        console.log('      git hub start <url of issue>');
     });
 });
 program.parse(process.argv);
