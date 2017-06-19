@@ -106,6 +106,13 @@ function repoReq(
   })
 }
 
+function handleAsyc(fn: (...args) => Promise<any>){
+  return (args) => fn.apply(this, args).catch(e => {
+    console.log('[ERROR]')
+    console.log(e)
+  })
+}
+
 program
   .version('1.0.0')
   .usage('[options]')
