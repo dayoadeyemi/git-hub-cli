@@ -52,21 +52,21 @@ if (config.remote && config.remote.origin && config.remote.origin.url &&
     repo: { get(){ throw new Error('Must be in a repo with a github origin!'); } },
   });
 }
-
-function repoReq(
-  method: 'POST' | 'PATCH' | 'GET',
-  resource: 'issues' | 'merges' | 'pulls',
-  postData: { owner: string, repo: string },
-  params = []
-) {
-  if (!(config.user && config.user.username && config.user.token)) {
-    throw new Error('Must set user.username and user.token in git config or run `git hub init`');
-  }
-  return new Promise<{
-    html_url: string
-    title: string
-    body: string
-  }>((resolve, reject) => {
+type Method = 'POST' | 'PATCH' | 'GET'
+type GitHubObject = {
+  html_url: string,
+  title: string,
+  body: string,
+  repository_url: string,
+  state: string,
+  comments_url: string,
+  number: number,
+  event: string,
+  actor: { login: string },
+}
+type GitHubResponse = GitHubObject | GitHubObject[] | { items: GitHubObject[] }
+function makeGitHubRequest(method: Method, path: string, postData?){
+    return new Promise<GitHubResponse | GitHubResponse[]>((resolve, reject) => {
     const reqOptions = {
       auth: config.user.username + ':' + config.user.token,
       hostname: 'api.github.com',
@@ -75,15 +75,8 @@ function repoReq(
         'User-Agent': 'git-hub-cli',
         'Content-Type': 'application/json',
       },
-      path: [
-        '',
-        'repos',
-        postData.owner || current.owner,
-        postData.repo || current.repo,
-        resource
-      ].concat(params).join('/'),
+      path
     }
-    delete postData.repo
     const request = https.request(reqOptions, (res) => {
       let body = '';
       res.setEncoding('utf8');
@@ -97,8 +90,8 @@ function repoReq(
         catch (e){
           return reject('Failed to parse response from GitHub')
         }
-        if (json.html_url) resolve(json)
-        else reject(new Error(`Got "${json.message}", when attempting to ${method} on ${reqOptions.path}, see ${json.documentation_url} from more information ${json.errors?'\nErrors:\n'+JSON.stringify(json.errors, null,2):''}`))
+        if (!json.message) resolve(json)
+        else reject(new Error(`Got "${json.message}", when attempting to ${method} on ${path}, see ${json.documentation_url} from more information ${json.errors?'\nErrors:\n'+JSON.stringify(json.errors, null,2):''}`))
       })
     });
     if (method !== 'GET') request.write(JSON.stringify(postData));
@@ -106,6 +99,33 @@ function repoReq(
   })
 }
 
+async function repoReq(
+  method: Method,
+  resource: 'issues' | 'merges' | 'pulls',
+  postData: { owner: string, repo: string },
+  params = []
+) {
+  if (!(config.user && config.user.username && config.user.token)) {
+    throw new Error('Must set user.username and user.token in git config or run `git hub init`');
+  }
+  const path = [
+        '',
+        'repos',
+        postData.owner || current.owner,
+        postData.repo || current.repo,
+        resource
+      ].concat(params).join('/')
+  delete postData.repo
+  return await makeGitHubRequest(method, path, postData) as GitHubObject;
+}
+
+async function searchGitHub(args: {[arg: string]: string}, query: string = ''){
+  for (let arg in args){
+    query+='+'+arg+':'+args[arg]
+  }
+  console.log(query)
+  return await makeGitHubRequest('GET','/search/issues?q='+query) as { items: GitHubObject[] }
+}
 function handleAsyc<S, T>(fn: (...S) => Promise<T>){
   return (...args) => fn.apply(this, args).catch(e => {
     console.log('[ERROR]')
@@ -116,15 +136,56 @@ function handleAsyc<S, T>(fn: (...S) => Promise<T>){
 program
   .version('1.0.0')
   .usage('[options]')
-  .command('pulls <action>')
+  .command('pulls [action]')
   .option("--title <title>", 'The title of the pull request.', current.branch)
   .option("--head <head>", 'The name of the branch where your changes are implemented. For cross-repository pull requests in the same network, namespace head with a user like this: username:branch', current.branch)
   .option("--base <base>", 'The name of the branch you want the changes pulled into. This should be an existing branch on the current repository. You cannot submit a pull request to one repository that requests a merge to a base of another repository.', config.gitflow.develop)
-  .option("--body <body>", 'The contents of the pull request.', `Enables ${current.issue_url}`)
+  .option("--body <body>", 'The contents of the pull request.', `${current.issue_url}`)
   .action(handleAsyc(async function (action, command) {
+    async function getCurrentPr(){
+      const json = await searchGitHub({
+        type:'pr',
+        repo: current.repo,
+        user: current.owner,
+        head: command.opts().head,
+        base: command.opts().base,
+      })
+      if (json.items[0]) {
+        return json.items[0];
+      } else {
+        console.log(`No Pull requests found with
+
+  owner = ${current.owner}
+  repo  = ${current.repo}
+  head  = ${command.opts().head}
+  base  = ${command.opts().base}
+
+You could use "git hub pulls create --head ${command.opts().head} --base ${command.opts().base}" to make one`)
+      }
+    }
+    function showPr(pr){
+      return `# ${pr.title}(${pr.html_url})
+## [${pr.repository_url.replace('https://api.github.com/repos/','')}](${pr.state})
+ ${pr.body}`
+    }
     if (action === 'create') {
-      const json = await repoReq('POST', 'pulls', command.opts())
+      const json = await repoReq('POST', 'pulls', command.opts()) as GitHubObject
       console.log(json.html_url)
+    } else if (action == 'show') {
+      const pr = await getCurrentPr() as GitHubObject
+      showMarkdown(showPr(pr))
+    // } else if (action == 'show-comments') {
+    //   const pr = await getCurrentPr() as GitHubObject
+    //   console.log(pr)
+    //   const events = await makeGitHubRequest('GET', `/repos/${current.owner}/${current.repo}/pulls/${pr.number}/reviews`) as GitHubObject[]
+    //   console.log( events.map($ => $))
+    } else if (action == null) {
+      const json = await searchGitHub({
+        type:'pr',
+        user: current.owner,
+        in: 'body'
+      }, command.opts().body)
+      showMarkdown(json.items.map(showPr).join('\n\r'))
     } else {
       throw new Error(`Unkown action: ${action}`)
     }
@@ -194,6 +255,8 @@ async function showIssue(issue_url){
     try {
       const json = await repoReq('GET', 'issues', { owner, repo }, [number])
       title = json.title
+      console.log('    Title: ' + title)
+      console.log('    Url: https://' + url)
       showMarkdown(json.body)
       return { url, title, owner, repo, number }
     } catch (e) {
@@ -206,8 +269,6 @@ program
   .description('Set the active GitHub issue url')
   .action(handleAsyc(async function (issue_url, command) {
     const issue = await showIssue(issue_url)
-    console.log('Current the issue is set to ' + issue.title)
-    console.log('    https://api.github.com/' + issue.url)
     setCurrentIssue(issue)
   }));
 
@@ -227,8 +288,6 @@ program
     issue_url = issue_url || current.issue_url
     if (issue_url) {
       const issue = await showIssue(issue_url)
-      console.log('    Title: ' + issue.title)
-      console.log('    Url: https://api.github.com/' + issue.url)
     }
     else console.log('Not working on any issue')
   }));

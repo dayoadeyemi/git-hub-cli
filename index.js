@@ -57,10 +57,7 @@ else {
         repo: { get() { throw new Error('Must be in a repo with a github origin!'); } },
     });
 }
-function repoReq(method, resource, postData, params = []) {
-    if (!(config_1.config.user && config_1.config.user.username && config_1.config.user.token)) {
-        throw new Error('Must set user.username and user.token in git config or run `git hub init`');
-    }
+function makeGitHubRequest(method, path, postData) {
     return new Promise((resolve, reject) => {
         const reqOptions = {
             auth: config_1.config.user.username + ':' + config_1.config.user.token,
@@ -70,15 +67,8 @@ function repoReq(method, resource, postData, params = []) {
                 'User-Agent': 'git-hub-cli',
                 'Content-Type': 'application/json',
             },
-            path: [
-                '',
-                'repos',
-                postData.owner || current.owner,
-                postData.repo || current.repo,
-                resource
-            ].concat(params).join('/'),
+            path
         };
-        delete postData.repo;
         const request = https.request(reqOptions, (res) => {
             let body = '';
             res.setEncoding('utf8');
@@ -92,15 +82,40 @@ function repoReq(method, resource, postData, params = []) {
                 catch (e) {
                     return reject('Failed to parse response from GitHub');
                 }
-                if (json.html_url)
+                if (!json.message)
                     resolve(json);
                 else
-                    reject(new Error(`Got "${json.message}", when attempting to ${method} on ${reqOptions.path}, see ${json.documentation_url} from more information ${json.errors ? '\nErrors:\n' + JSON.stringify(json.errors, null, 2) : ''}`));
+                    reject(new Error(`Got "${json.message}", when attempting to ${method} on ${path}, see ${json.documentation_url} from more information ${json.errors ? '\nErrors:\n' + JSON.stringify(json.errors, null, 2) : ''}`));
             });
         });
         if (method !== 'GET')
             request.write(JSON.stringify(postData));
         request.end();
+    });
+}
+function repoReq(method, resource, postData, params = []) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!(config_1.config.user && config_1.config.user.username && config_1.config.user.token)) {
+            throw new Error('Must set user.username and user.token in git config or run `git hub init`');
+        }
+        const path = [
+            '',
+            'repos',
+            postData.owner || current.owner,
+            postData.repo || current.repo,
+            resource
+        ].concat(params).join('/');
+        delete postData.repo;
+        return yield makeGitHubRequest(method, path, postData);
+    });
+}
+function searchGitHub(args, query = '') {
+    return __awaiter(this, void 0, void 0, function* () {
+        for (let arg in args) {
+            query += '+' + arg + ':' + args[arg];
+        }
+        console.log(query);
+        return yield makeGitHubRequest('GET', '/search/issues?q=' + query);
     });
 }
 function handleAsyc(fn) {
@@ -112,16 +127,62 @@ function handleAsyc(fn) {
 program
     .version('1.0.0')
     .usage('[options]')
-    .command('pulls <action>')
+    .command('pulls [action]')
     .option("--title <title>", 'The title of the pull request.', current.branch)
     .option("--head <head>", 'The name of the branch where your changes are implemented. For cross-repository pull requests in the same network, namespace head with a user like this: username:branch', current.branch)
     .option("--base <base>", 'The name of the branch you want the changes pulled into. This should be an existing branch on the current repository. You cannot submit a pull request to one repository that requests a merge to a base of another repository.', config_1.config.gitflow.develop)
-    .option("--body <body>", 'The contents of the pull request.', `Enables ${current.issue_url}`)
+    .option("--body <body>", 'The contents of the pull request.', `${current.issue_url}`)
     .action(handleAsyc(function (action, command) {
     return __awaiter(this, void 0, void 0, function* () {
+        function getCurrentPr() {
+            return __awaiter(this, void 0, void 0, function* () {
+                const json = yield searchGitHub({
+                    type: 'pr',
+                    repo: current.repo,
+                    user: current.owner,
+                    head: command.opts().head,
+                    base: command.opts().base,
+                });
+                if (json.items[0]) {
+                    return json.items[0];
+                }
+                else {
+                    console.log(`No Pull requests found with
+
+  owner = ${current.owner}
+  repo  = ${current.repo}
+  head  = ${command.opts().head}
+  base  = ${command.opts().base}
+
+You could use "git hub pulls create --head ${command.opts().head} --base ${command.opts().base}" to make one`);
+                }
+            });
+        }
+        function showPr(pr) {
+            return `# ${pr.title}(${pr.html_url})
+## [${pr.repository_url.replace('https://api.github.com/repos/', '')}](${pr.state})
+ ${pr.body}`;
+        }
         if (action === 'create') {
             const json = yield repoReq('POST', 'pulls', command.opts());
             console.log(json.html_url);
+        }
+        else if (action == 'show') {
+            const pr = yield getCurrentPr();
+            showMarkdown(showPr(pr));
+            // } else if (action == 'show-comments') {
+            //   const pr = await getCurrentPr() as GitHubObject
+            //   console.log(pr)
+            //   const events = await makeGitHubRequest('GET', `/repos/${current.owner}/${current.repo}/pulls/${pr.number}/reviews`) as GitHubObject[]
+            //   console.log( events.map($ => $))
+        }
+        else if (action == null) {
+            const json = yield searchGitHub({
+                type: 'pr',
+                user: current.owner,
+                in: 'body'
+            }, command.opts().body);
+            showMarkdown(json.items.map(showPr).join('\n\r'));
         }
         else {
             throw new Error(`Unkown action: ${action}`);
@@ -194,6 +255,8 @@ function showIssue(issue_url) {
         try {
             const json = yield repoReq('GET', 'issues', { owner, repo }, [number]);
             title = json.title;
+            console.log('    Title: ' + title);
+            console.log('    Url: https://' + url);
             showMarkdown(json.body);
             return { url, title, owner, repo, number };
         }
@@ -208,8 +271,6 @@ program
     .action(handleAsyc(function (issue_url, command) {
     return __awaiter(this, void 0, void 0, function* () {
         const issue = yield showIssue(issue_url);
-        console.log('Current the issue is set to ' + issue.title);
-        console.log('    https://api.github.com/' + issue.url);
         setCurrentIssue(issue);
     });
 }));
@@ -231,8 +292,6 @@ program
         issue_url = issue_url || current.issue_url;
         if (issue_url) {
             const issue = yield showIssue(issue_url);
-            console.log('    Title: ' + issue.title);
-            console.log('    Url: https://api.github.com/' + issue.url);
         }
         else
             console.log('Not working on any issue');
