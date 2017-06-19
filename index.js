@@ -46,7 +46,7 @@ if (!(config_1.config.gitflow && config_1.config.gitflow.develop))
     config_1.config.gitflow = { develop: 'master' };
 let match;
 if (config_1.config.remote && config_1.config.remote.origin && config_1.config.remote.origin.url &&
-    ((match = config_1.config.remote.origin.url.match(/https:\/\/github\.com\/([^\/]+)\/([^\/]+)\.git/)) ||
+    ((match = config_1.config.remote.origin.url.match(/https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\.git/)) ||
         (match = config_1.config.remote.origin.url.match(/git@github.com:([^\/]+)\/([^\/]+)\.git/)))) {
     current.owner = match[1];
     current.repo = match[2];
