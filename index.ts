@@ -38,17 +38,19 @@ const current = {
   issue_title: config.hub && config.hub.issue && config.hub.issue.title || ''
 };
 
-//console.log(config);
+if (!(config.gitflow && config.gitflow.develop)) config.gitflow = { develop: 'master' }
+
 let match;
-if (!(config.user && config.user.username && config.user.token)) throw new Error('must set user.username and user.token in git config');
-if (!(config.gitflow && config.gitflow.develop)) throw new Error('must set gitflow.develop in git config');
 if (config.remote && config.remote.origin && config.remote.origin.url &&
   ((match = config.remote.origin.url.match(/https:\/\/github\.com\/([^\/]+)\/([^\/]+)\.git/)) ||
     (match = config.remote.origin.url.match(/git@github.com:([^\/]+)\/([^\/]+)\.git/)))) {
   current.owner = match[1];
   current.repo = match[2];
 } else {
-  throw new Error('must have a github origin');
+  Object.defineProperties(current, {
+    owner: { get(){ throw new Error('Must be in a repo with a github origin!'); } },
+    repo: { get(){ throw new Error('Must be in a repo with a github origin!'); } },
+  });
 }
 
 function repoReq(
@@ -57,6 +59,9 @@ function repoReq(
   postData: { owner: string, repo: string },
   params = []
 ) {
+  if (!(config.user && config.user.username && config.user.token)) {
+    throw new Error('must set user.username and user.token in git config');
+  }
   return new Promise<{
     html_url: string
     title: string

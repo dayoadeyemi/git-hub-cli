@@ -42,12 +42,9 @@ const current = {
     issue_url: config_1.config.hub && config_1.config.hub.issue && config_1.config.hub.issue.url || '',
     issue_title: config_1.config.hub && config_1.config.hub.issue && config_1.config.hub.issue.title || ''
 };
-//console.log(config);
-let match;
-if (!(config_1.config.user && config_1.config.user.username && config_1.config.user.token))
-    throw new Error('must set user.username and user.token in git config');
 if (!(config_1.config.gitflow && config_1.config.gitflow.develop))
-    throw new Error('must set gitflow.develop in git config');
+    config_1.config.gitflow = { develop: 'master' };
+let match;
 if (config_1.config.remote && config_1.config.remote.origin && config_1.config.remote.origin.url &&
     ((match = config_1.config.remote.origin.url.match(/https:\/\/github\.com\/([^\/]+)\/([^\/]+)\.git/)) ||
         (match = config_1.config.remote.origin.url.match(/git@github.com:([^\/]+)\/([^\/]+)\.git/)))) {
@@ -55,9 +52,15 @@ if (config_1.config.remote && config_1.config.remote.origin && config_1.config.r
     current.repo = match[2];
 }
 else {
-    throw new Error('must have a github origin');
+    Object.defineProperties(current, {
+        owner: { get() { throw new Error('Must be in a repo with a github origin!'); } },
+        repo: { get() { throw new Error('Must be in a repo with a github origin!'); } },
+    });
 }
 function repoReq(method, resource, postData, params = []) {
+    if (!(config_1.config.user && config_1.config.user.username && config_1.config.user.token)) {
+        throw new Error('must set user.username and user.token in git config');
+    }
     return new Promise((resolve, reject) => {
         const reqOptions = {
             auth: config_1.config.user.username + ':' + config_1.config.user.token,
