@@ -121,14 +121,14 @@ program
   .option("--head <head>", 'The name of the branch where your changes are implemented. For cross-repository pull requests in the same network, namespace head with a user like this: username:branch', current.branch)
   .option("--base <base>", 'The name of the branch you want the changes pulled into. This should be an existing branch on the current repository. You cannot submit a pull request to one repository that requests a merge to a base of another repository.', config.gitflow.develop)
   .option("--body <body>", 'The contents of the pull request.', `Enables ${current.issue_url}`)
-  .action(async function (action, command) {
+  .action(handleAsyc(async function (action, command) {
     if (action === 'create') {
       const json = await repoReq('POST', 'pulls', command.opts())
       console.log(json.html_url)
     } else {
       throw new Error(`Unkown action: ${action}`)
     }
-  });
+  }));
 
 program
   .command('issues <action>')
@@ -137,27 +137,27 @@ program
   .option("--body <body>", 'The contents of the issue.', '')
   .option("--repo <repo>", 'The repo for actions', '')
   .option("--assignees <assignees>", 'Logins for Users to assign to this issue. NOTE: Only users with push access can set assignees for new issues. Assignees are silently dropped otherwise.', [config.user.username])
-  .action(async function (action, command) {
+  .action(handleAsyc(async function (action, command) {
     if (action === 'create') {
       const json = await repoReq('POST', 'issues', command.opts())
       console.log(json.html_url)
     } else {
       throw new Error(`Unkown action: ${action}`)
     }
-  })
+  }))
 
 program
   .command('merges <action>')
   .option("--head <head>", '', current.branch)
   .option("--base <base>", '', config.gitflow.develop)
-  .action(async function (action, command) {
+  .action(handleAsyc(async function (action, command) {
     if (action === 'create') {
       const json = await repoReq('POST', 'merges', command.opts())
       console.log(json.html_url)
     } else {
       throw new Error(`Unkown action: ${action}`)
     }
-  });
+  }));
 
 function clearCurrentIssue(){
   spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.url'])
@@ -204,12 +204,12 @@ async function showIssue(issue_url){
 program
   .command('start <issue_url>')
   .description('Set the active GitHub issue url')
-  .action(async function (issue_url, command) {
+  .action(handleAsyc(async function (issue_url, command) {
     const issue = await showIssue(issue_url)
     console.log('Current the issue is set to ' + issue.title)
     console.log('    https://api.github.com/' + issue.url)
     setCurrentIssue(issue)
-  });
+  }));
 
 program
   .command('end')
@@ -223,7 +223,7 @@ program
 program
   .command('show [issue_url]')
   .description('Show the active GitHub issue')
-  .action(async function (issue_url, command) {
+  .action(handleAsyc(async function (issue_url, command) {
     issue_url || current.issue_url
     if (issue_url) {
       const issue = await showIssue(current.issue_url)
@@ -231,12 +231,12 @@ program
       console.log('    https://api.github.com/' + issue.url)
     }
     else console.log('Not working on any issue')
-  });
+  }));
 
 program
   .command('init')
   .description('Initialize the git hub tool')
-  .action(async function (action, command) {
+  .action(handleAsyc(async function (action, command) {
     console.log("  What is your GitHub Username?")
     const username = await input()
     console.log('  What is your GitHub Token?')
@@ -258,5 +258,5 @@ program
     console.log('  When you are working on an issue you can set it as the default')
     console.log('  Just type:-')
     console.log('      git hub start <url of issue>')
-  });
+  }));
 program.parse(process.argv);
