@@ -104,7 +104,7 @@ function repoReq(method, resource, postData, params = []) {
     });
 }
 function handleAsyc(fn) {
-    return (args) => fn.apply(this, args).catch(e => {
+    return (...args) => fn.apply(this, args).catch(e => {
         console.log('[ERROR]');
         console.log(e);
     });
