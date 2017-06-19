@@ -224,7 +224,7 @@ program
   .command('show [issue_url]')
   .description('Show the active GitHub issue')
   .action(handleAsyc(async function (issue_url, command) {
-    issue_url || current.issue_url
+    issue_url = issue_url || current.issue_url
     if (issue_url) {
       const issue = await showIssue(current.issue_url)
       console.log('Current the issue is set to ' + issue.title)

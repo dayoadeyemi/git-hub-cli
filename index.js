@@ -117,7 +117,7 @@ program
     .option("--head <head>", 'The name of the branch where your changes are implemented. For cross-repository pull requests in the same network, namespace head with a user like this: username:branch', current.branch)
     .option("--base <base>", 'The name of the branch you want the changes pulled into. This should be an existing branch on the current repository. You cannot submit a pull request to one repository that requests a merge to a base of another repository.', config_1.config.gitflow.develop)
     .option("--body <body>", 'The contents of the pull request.', `Enables ${current.issue_url}`)
-    .action(function (action, command) {
+    .action(handleAsyc(function (action, command) {
     return __awaiter(this, void 0, void 0, function* () {
         if (action === 'create') {
             const json = yield repoReq('POST', 'pulls', command.opts());
@@ -127,7 +127,7 @@ program
             throw new Error(`Unkown action: ${action}`);
         }
     });
-});
+}));
 program
     .command('issues <action>')
     .option("--title <title>", 'Required. The title of the issue.', current.branch)
@@ -135,7 +135,7 @@ program
     .option("--body <body>", 'The contents of the issue.', '')
     .option("--repo <repo>", 'The repo for actions', '')
     .option("--assignees <assignees>", 'Logins for Users to assign to this issue. NOTE: Only users with push access can set assignees for new issues. Assignees are silently dropped otherwise.', [config_1.config.user.username])
-    .action(function (action, command) {
+    .action(handleAsyc(function (action, command) {
     return __awaiter(this, void 0, void 0, function* () {
         if (action === 'create') {
             const json = yield repoReq('POST', 'issues', command.opts());
@@ -145,12 +145,12 @@ program
             throw new Error(`Unkown action: ${action}`);
         }
     });
-});
+}));
 program
     .command('merges <action>')
     .option("--head <head>", '', current.branch)
     .option("--base <base>", '', config_1.config.gitflow.develop)
-    .action(function (action, command) {
+    .action(handleAsyc(function (action, command) {
     return __awaiter(this, void 0, void 0, function* () {
         if (action === 'create') {
             const json = yield repoReq('POST', 'merges', command.opts());
@@ -160,7 +160,7 @@ program
             throw new Error(`Unkown action: ${action}`);
         }
     });
-});
+}));
 function clearCurrentIssue() {
     child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.url']);
     child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.title']);
@@ -205,14 +205,14 @@ function showIssue(issue_url) {
 program
     .command('start <issue_url>')
     .description('Set the active GitHub issue url')
-    .action(function (issue_url, command) {
+    .action(handleAsyc(function (issue_url, command) {
     return __awaiter(this, void 0, void 0, function* () {
         const issue = yield showIssue(issue_url);
         console.log('Current the issue is set to ' + issue.title);
         console.log('    https://api.github.com/' + issue.url);
         setCurrentIssue(issue);
     });
-});
+}));
 program
     .command('end')
     .description('Remove the active GitHUb issue')
@@ -226,9 +226,9 @@ program
 program
     .command('show [issue_url]')
     .description('Show the active GitHub issue')
-    .action(function (issue_url, command) {
+    .action(handleAsyc(function (issue_url, command) {
     return __awaiter(this, void 0, void 0, function* () {
-        issue_url || current.issue_url;
+        issue_url = issue_url || current.issue_url;
         if (issue_url) {
             const issue = yield showIssue(current.issue_url);
             console.log('Current the issue is set to ' + issue.title);
@@ -237,11 +237,11 @@ program
         else
             console.log('Not working on any issue');
     });
-});
+}));
 program
     .command('init')
     .description('Initialize the git hub tool')
-    .action(function (action, command) {
+    .action(handleAsyc(function (action, command) {
     return __awaiter(this, void 0, void 0, function* () {
         console.log("  What is your GitHub Username?");
         const username = yield input();
@@ -265,5 +265,5 @@ program
         console.log('  Just type:-');
         console.log('      git hub start <url of issue>');
     });
-});
+}));
 program.parse(process.argv);
