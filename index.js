@@ -230,9 +230,9 @@ program
     return __awaiter(this, void 0, void 0, function* () {
         issue_url = issue_url || current.issue_url;
         if (issue_url) {
-            const issue = yield showIssue(current.issue_url);
-            console.log('Current the issue is set to ' + issue.title);
-            console.log('    https://api.github.com/' + issue.url);
+            const issue = yield showIssue(issue_url);
+            console.log('    Title: ' + issue.title);
+            console.log('    Url: https://api.github.com/' + issue.url);
         }
         else
             console.log('Not working on any issue');

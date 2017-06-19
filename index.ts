@@ -226,9 +226,9 @@ program
   .action(handleAsyc(async function (issue_url, command) {
     issue_url = issue_url || current.issue_url
     if (issue_url) {
-      const issue = await showIssue(current.issue_url)
-      console.log('Current the issue is set to ' + issue.title)
-      console.log('    https://api.github.com/' + issue.url)
+      const issue = await showIssue(issue_url)
+      console.log('    Title: ' + issue.title)
+      console.log('    Url: https://api.github.com/' + issue.url)
     }
     else console.log('Not working on any issue')
   }));
