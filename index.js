@@ -162,11 +162,11 @@ program
     });
 }));
 function clearCurrentIssue() {
-    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.url']);
-    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.title']);
-    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.owner']);
-    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.repo']);
-    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.number']);
+    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.url || /bin/true']);
+    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.title || /bin/true']);
+    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.owner || /bin/true']);
+    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.repo || /bin/true']);
+    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.number || /bin/true']);
 }
 function setCurrentIssue(issue) {
     clearCurrentIssue();
@@ -253,11 +253,11 @@ program
         console.log('  By default, what branch are you going to target your pull requests to?');
         console.log('  Note using the option "--base <branch>" you can override this whenever you want!');
         const develop = yield input();
-        child_process_1.execSync(`git config --unset-all --global user.username`);
+        child_process_1.execSync(`git config --unset-all --global user.username || /bin/true`);
         child_process_1.execSync(`git config --add --global user.username ${username}`);
-        child_process_1.execSync(`git config --unset-all --global user.token`);
+        child_process_1.execSync(`git config --unset-all --global user.token || /bin/true`);
         child_process_1.execSync(`git config --add --global user.token ${token}`);
-        child_process_1.execSync(`git config --unset-all --global gitflow.develop`);
+        child_process_1.execSync(`git config --unset-all --global gitflow.develop || /bin/true`);
         child_process_1.execSync(`git config --add --global gitflow.develop ${develop}`);
         console.log('  You have been set up to use the git hub CLI!');
         console.log('  Now you can create pull requests assigned to issues with ease');

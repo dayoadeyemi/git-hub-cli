@@ -160,11 +160,11 @@ program
   }));
 
 function clearCurrentIssue(){
-  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.url'])
-  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.title'])
-  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.owner'])
-  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.repo'])
-  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.number'])
+  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.url || /bin/true'])
+  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.title || /bin/true'])
+  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.owner || /bin/true'])
+  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.repo || /bin/true'])
+  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.number || /bin/true'])
 }
 
 function setCurrentIssue(issue){
@@ -247,11 +247,11 @@ program
     console.log('  By default, what branch are you going to target your pull requests to?')
     console.log('  Note using the option "--base <branch>" you can override this whenever you want!')
     const develop = await input()
-    execSync(`git config --unset-all --global user.username`)
+    execSync(`git config --unset-all --global user.username || /bin/true`)
     execSync(`git config --add --global user.username ${username}`)
-    execSync(`git config --unset-all --global user.token`)
+    execSync(`git config --unset-all --global user.token || /bin/true`)
     execSync(`git config --add --global user.token ${token}`)
-    execSync(`git config --unset-all --global gitflow.develop`)
+    execSync(`git config --unset-all --global gitflow.develop || /bin/true`)
     execSync(`git config --add --global gitflow.develop ${develop}`)
     console.log('  You have been set up to use the git hub CLI!')
     console.log('  Now you can create pull requests assigned to issues with ease')
