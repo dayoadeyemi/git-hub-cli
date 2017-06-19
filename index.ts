@@ -123,7 +123,6 @@ async function searchGitHub(args: {[arg: string]: string}, query: string = ''){
   for (let arg in args){
     query+='+'+arg+':'+args[arg]
   }
-  console.log(query)
   return await makeGitHubRequest('GET','/search/issues?q='+query) as { items: GitHubObject[] }
 }
 function handleAsyc<S, T>(fn: (...S) => Promise<T>){

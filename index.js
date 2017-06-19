@@ -114,7 +114,6 @@ function searchGitHub(args, query = '') {
         for (let arg in args) {
             query += '+' + arg + ':' + args[arg];
         }
-        console.log(query);
         return yield makeGitHubRequest('GET', '/search/issues?q=' + query);
     });
 }
