@@ -60,7 +60,7 @@ function repoReq(
   params = []
 ) {
   if (!(config.user && config.user.username && config.user.token)) {
-    throw new Error('must set user.username and user.token in git config');
+    throw new Error('Must set user.username and user.token in git config or run `git hub init`');
   }
   return new Promise<{
     html_url: string
@@ -85,13 +85,11 @@ function repoReq(
     }
     delete postData.repo
     const request = https.request(reqOptions, (res) => {
-      console.log(res.headers)
       let body = '';
       res.setEncoding('utf8');
       res.on('data', (chunk) => body += chunk)
       res.on('error', reject)
       res.on('end', () => {
-        console.log(body, reqOptions.path)
         let json
         try {
           json = JSON.parse(body);
@@ -198,7 +196,7 @@ async function showIssue(issue_url){
 
 program
   .command('start <issue_url>')
-  .description('Set the active GitHUb issue url')
+  .description('Set the active GitHub issue url')
   .action(async function (issue_url, command) {
     const issue = await showIssue(issue_url)
     console.log('Current the issue is set to ' + issue.title)
@@ -216,10 +214,11 @@ program
   });
 
 program
-  .command('current')
+  .command('show [issue_url]')
   .description('Show the active GitHub issue')
-  .action(async function (action, command) {
-    if (current.issue_url) {
+  .action(async function (issue_url, command) {
+    issue_url || current.issue_url
+    if (issue_url) {
       const issue = await showIssue(current.issue_url)
       console.log('Current the issue is set to ' + issue.title)
       console.log('    https://api.github.com/' + issue.url)
