@@ -9,6 +9,7 @@ import { Readable } from 'stream'
 import * as marked from 'marked'
 import * as TerminalRenderer from 'marked-terminal'
 import * as readline from 'readline'
+import * as tty from 'tty'
 
 
 function input(){
@@ -61,6 +62,7 @@ type GitHubObject = {
   state: string,
   comments_url: string,
   number: number,
+  pull_request: { url: string },
   event: string,
   actor: { login: string },
 }
@@ -162,17 +164,23 @@ program
 You could use "git hub pulls create --head ${command.opts().head} --base ${command.opts().base}" to make one`)
       }
     }
-    function showPr(pr){
-      return `# ${pr.title}(${pr.html_url})
-## [${pr.repository_url.replace('https://api.github.com/repos/','')}](${pr.state})
- ${pr.body}`
+    async function showPr(pr){
+      const repo = pr.repository_url.replace(/https?:\/\/api.github.com\/repos\/[^/]+\//,'')
+      const PR = await makeGitHubRequest('GET', pr.pull_request.url.replace(/https?:\/\/api.github.com/,'')) as any
+      console.log(PR)
+      return `
+# ${repo}
+## [${pr.title} #${pr.number}](${pr.html_url}) [[${pr.state}]]
+### \`${PR.user.login}\` want's to merge \`${PR.head.ref}\` into \`${PR.base.ref}\` 
+${PR.body.split('\n').map($ => '> ' + $)}
+`
     }
     if (action === 'create') {
       const json = await repoReq('POST', 'pulls', command.opts()) as GitHubObject
       console.log(json.html_url)
     } else if (action == 'show') {
       const pr = await getCurrentPr() as GitHubObject
-      showMarkdown(showPr(pr))
+      showMarkdown(await showPr(pr))
     // } else if (action == 'show-comments') {
     //   const pr = await getCurrentPr() as GitHubObject
     //   console.log(pr)
@@ -184,7 +192,9 @@ You could use "git hub pulls create --head ${command.opts().head} --base ${comma
         user: current.owner,
         in: 'body'
       }, command.opts().body)
-      showMarkdown(json.items.map(showPr).join('\n\r'))
+
+      const prs = await Promise.all(json.items.map(showPr))
+      showMarkdown(prs.join('\n\r'))
     } else {
       throw new Error(`Unkown action: ${action}`)
     }
@@ -237,11 +247,13 @@ function setCurrentIssue(issue){
 }
 
 function showMarkdown(doc: string){
-  const s = new Readable()
-  s.push(marked(doc))
-  s.push(null)
-  const cp = spawn('less', ['-R'], { stdio: ['pipe', 1, 2, 'ipc']})
-  s.pipe(cp.stdin)
+  if (tty.isatty(1)) {
+    const s = new Readable()
+    s.push(marked(doc))
+    s.push(null)
+    const cp = spawn('less', ['-R'], { stdio: ['pipe', 1, 2, 'ipc']})
+    s.pipe(cp.stdin)
+  }
 }
 
 async function showIssue(issue_url){

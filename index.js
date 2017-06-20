@@ -18,6 +18,7 @@ const stream_1 = require("stream");
 const marked = require("marked");
 const TerminalRenderer = require("marked-terminal");
 const readline = require("readline");
+const tty = require("tty");
 function input() {
     return new Promise(resolve => {
         const rl = readline.createInterface({
@@ -158,9 +159,17 @@ You could use "git hub pulls create --head ${command.opts().head} --base ${comma
             });
         }
         function showPr(pr) {
-            return `# ${pr.title}(${pr.html_url})
-## [${pr.repository_url.replace('https://api.github.com/repos/', '')}](${pr.state})
- ${pr.body}`;
+            return __awaiter(this, void 0, void 0, function* () {
+                const repo = pr.repository_url.replace(/https?:\/\/api.github.com\/repos\/[^/]+\//, '');
+                const PR = yield makeGitHubRequest('GET', pr.pull_request.url.replace(/https?:\/\/api.github.com/, ''));
+                console.log(PR);
+                return `
+# ${repo}
+## [${pr.title} #${pr.number}](${pr.html_url}) [[${pr.state}]]
+### \`${PR.user.login}\` want's to merge \`${PR.head.ref}\` into \`${PR.base.ref}\` 
+${PR.body.split('\n').map($ => '> ' + $)}
+`;
+            });
         }
         if (action === 'create') {
             const json = yield repoReq('POST', 'pulls', command.opts());
@@ -168,7 +177,7 @@ You could use "git hub pulls create --head ${command.opts().head} --base ${comma
         }
         else if (action == 'show') {
             const pr = yield getCurrentPr();
-            showMarkdown(showPr(pr));
+            showMarkdown(yield showPr(pr));
             // } else if (action == 'show-comments') {
             //   const pr = await getCurrentPr() as GitHubObject
             //   console.log(pr)
@@ -181,7 +190,8 @@ You could use "git hub pulls create --head ${command.opts().head} --base ${comma
                 user: current.owner,
                 in: 'body'
             }, command.opts().body);
-            showMarkdown(json.items.map(showPr).join('\n\r'));
+            const prs = yield Promise.all(json.items.map(showPr));
+            showMarkdown(prs.join('\n\r'));
         }
         else {
             throw new Error(`Unkown action: ${action}`);
@@ -237,11 +247,13 @@ function setCurrentIssue(issue) {
     child_process_1.spawnSync('git', ['config', '--global', '--add', 'hub.issue.number', issue.number]);
 }
 function showMarkdown(doc) {
-    const s = new stream_1.Readable();
-    s.push(marked(doc));
-    s.push(null);
-    const cp = child_pty_1.spawn('less', ['-R'], { stdio: ['pipe', 1, 2, 'ipc'] });
-    s.pipe(cp.stdin);
+    if (tty.isatty(1)) {
+        const s = new stream_1.Readable();
+        s.push(marked(doc));
+        s.push(null);
+        const cp = child_pty_1.spawn('less', ['-R'], { stdio: ['pipe', 1, 2, 'ipc'] });
+        s.pipe(cp.stdin);
+    }
 }
 function showIssue(issue_url) {
     return __awaiter(this, void 0, void 0, function* () {
