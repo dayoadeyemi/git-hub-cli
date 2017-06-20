@@ -129,7 +129,6 @@ async function searchGitHub(args: {[arg: string]: string}, query: string = ''){
 }
 function handleAsyc<S, T>(fn: (...S) => Promise<T>){
   return (...args) => fn.apply(this, args).catch(e => {
-    console.log('[ERROR]')
     console.log(e)
   })
 }
@@ -154,7 +153,7 @@ program
       if (json.items[0]) {
         return json.items[0];
       } else {
-        console.log(`No Pull requests found with
+        throw new Error(`No Pull requests found with
 
   owner = ${current.owner}
   repo  = ${current.repo}
@@ -167,7 +166,7 @@ You could use "git hub pulls create --head ${command.opts().head} --base ${comma
     async function showPr(pr){
       const repo = pr.repository_url.replace(/https?:\/\/api.github.com\/repos\/[^/]+\//,'')
       const PR = await makeGitHubRequest('GET', pr.pull_request.url.replace(/https?:\/\/api.github.com/,'')) as any
-      console.log(PR)
+      console.log(repo, PR.head.ref, PR.base.ref)
       return `
 # ${repo}
 ## [${pr.title} #${pr.number}](${pr.html_url}) [[${pr.state}]]
@@ -187,11 +186,15 @@ ${PR.body.split('\n').map($ => '> ' + $)}
     //   const events = await makeGitHubRequest('GET', `/repos/${current.owner}/${current.repo}/pulls/${pr.number}/reviews`) as GitHubObject[]
     //   console.log( events.map($ => $))
     } else if (action == null) {
-      const json = await searchGitHub({
+      const json = command.opts().body ? await searchGitHub({
         type:'pr',
         user: current.owner,
         in: 'body'
-      }, command.opts().body)
+      }, command.opts().body) : await searchGitHub({
+        type:'pr',
+        user: current.owner,
+        in: 'body',
+      })
 
       const prs = await Promise.all(json.items.map(showPr))
       showMarkdown(prs.join('\n\r'))
@@ -230,11 +233,11 @@ program
   }));
 
 function clearCurrentIssue(){
-  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.url || true'])
-  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.title || true'])
-  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.owner || true'])
-  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.repo || true'])
-  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.number || true'])
+  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.url'])
+  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.title'])
+  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.owner'])
+  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.repo'])
+  spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.number'])
 }
 
 function setCurrentIssue(issue){
@@ -257,6 +260,7 @@ function showMarkdown(doc: string){
 }
 
 async function showIssue(issue_url){
+  if (tty.isatty(1)) {
     const match = issue_url.match(/github\.com\/(\w+)\/(\w+)\/issues\/(\d+)$/)
     if (!match){
       throw new Error('Not a vaild git hub issue url')
@@ -273,6 +277,9 @@ async function showIssue(issue_url){
     } catch (e) {
       throw new Error('Failed to get the issue from GitHub')
     }
+  } else {
+    console.log('https://' +issue_url)
+  }
 }
 
 program
@@ -300,7 +307,10 @@ program
     if (issue_url) {
       const issue = await showIssue(issue_url)
     }
-    else console.log('Not working on any issue')
+    else {
+      console.log('Not working on any issue')
+      process.exit(1)
+    }
   }));
 
 program
@@ -317,12 +327,12 @@ program
     console.log('  By default, what branch are you going to target your pull requests to?')
     console.log('  Note using the option "--base <branch>" you can override this whenever you want!')
     const develop = await input()
-    execSync(`git config --unset-all --global user.username || true`)
-    execSync(`git config --add --global user.username ${username}`)
-    execSync(`git config --unset-all --global user.token || true`)
-    execSync(`git config --add --global user.token ${token}`)
-    execSync(`git config --unset-all --global gitflow.develop || true`)
-    execSync(`git config --add --global gitflow.develop ${develop}`)
+    spawnSync('git', ['config', '--unset-all',  '--global', 'user.username'])
+    spawnSync('git', ['config', '--add',  '--global', 'user.username', username])
+    spawnSync('git', ['config', '--unset-all',  '--global', 'user.token'])
+    spawnSync('git', ['config', '--add',  '--global', 'user.token', token])
+    spawnSync('git', ['config', '--unset-all',  '--global', 'gitflow.develop'])
+    spawnSync('git', ['config', '--add',  '--global', 'gitflow.develop', develop])
     console.log('  You have been set up to use the git hub CLI!')
     console.log('  Now you can create pull requests assigned to issues with ease')
     console.log('  When you are working on an issue you can set it as the default')

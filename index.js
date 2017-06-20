@@ -120,7 +120,6 @@ function searchGitHub(args, query = '') {
 }
 function handleAsyc(fn) {
     return (...args) => fn.apply(this, args).catch(e => {
-        console.log('[ERROR]');
         console.log(e);
     });
 }
@@ -147,7 +146,7 @@ program
                     return json.items[0];
                 }
                 else {
-                    console.log(`No Pull requests found with
+                    throw new Error(`No Pull requests found with
 
   owner = ${current.owner}
   repo  = ${current.repo}
@@ -162,7 +161,7 @@ You could use "git hub pulls create --head ${command.opts().head} --base ${comma
             return __awaiter(this, void 0, void 0, function* () {
                 const repo = pr.repository_url.replace(/https?:\/\/api.github.com\/repos\/[^/]+\//, '');
                 const PR = yield makeGitHubRequest('GET', pr.pull_request.url.replace(/https?:\/\/api.github.com/, ''));
-                console.log(PR);
+                console.log(repo, PR.head.ref, PR.base.ref);
                 return `
 # ${repo}
 ## [${pr.title} #${pr.number}](${pr.html_url}) [[${pr.state}]]
@@ -185,11 +184,15 @@ ${PR.body.split('\n').map($ => '> ' + $)}
             //   console.log( events.map($ => $))
         }
         else if (action == null) {
-            const json = yield searchGitHub({
+            const json = command.opts().body ? yield searchGitHub({
                 type: 'pr',
                 user: current.owner,
                 in: 'body'
-            }, command.opts().body);
+            }, command.opts().body) : yield searchGitHub({
+                type: 'pr',
+                user: current.owner,
+                in: 'body',
+            });
             const prs = yield Promise.all(json.items.map(showPr));
             showMarkdown(prs.join('\n\r'));
         }
@@ -232,11 +235,11 @@ program
     });
 }));
 function clearCurrentIssue() {
-    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.url || true']);
-    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.title || true']);
-    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.owner || true']);
-    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.repo || true']);
-    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.number || true']);
+    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.url']);
+    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.title']);
+    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.owner']);
+    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.repo']);
+    child_process_1.spawnSync('git', ['config', '--global', '--unset-all', 'hub.issue.number']);
 }
 function setCurrentIssue(issue) {
     clearCurrentIssue();
@@ -257,22 +260,27 @@ function showMarkdown(doc) {
 }
 function showIssue(issue_url) {
     return __awaiter(this, void 0, void 0, function* () {
-        const match = issue_url.match(/github\.com\/(\w+)\/(\w+)\/issues\/(\d+)$/);
-        if (!match) {
-            throw new Error('Not a vaild git hub issue url');
+        if (tty.isatty(1)) {
+            const match = issue_url.match(/github\.com\/(\w+)\/(\w+)\/issues\/(\d+)$/);
+            if (!match) {
+                throw new Error('Not a vaild git hub issue url');
+            }
+            const [url, owner, repo, number] = match;
+            let title;
+            try {
+                const json = yield repoReq('GET', 'issues', { owner, repo }, [number]);
+                title = json.title;
+                console.log('    Title: ' + title);
+                console.log('    Url: https://' + url);
+                showMarkdown(json.body);
+                return { url, title, owner, repo, number };
+            }
+            catch (e) {
+                throw new Error('Failed to get the issue from GitHub');
+            }
         }
-        const [url, owner, repo, number] = match;
-        let title;
-        try {
-            const json = yield repoReq('GET', 'issues', { owner, repo }, [number]);
-            title = json.title;
-            console.log('    Title: ' + title);
-            console.log('    Url: https://' + url);
-            showMarkdown(json.body);
-            return { url, title, owner, repo, number };
-        }
-        catch (e) {
-            throw new Error('Failed to get the issue from GitHub');
+        else {
+            console.log('https://' + issue_url);
         }
     });
 }
@@ -304,8 +312,10 @@ program
         if (issue_url) {
             const issue = yield showIssue(issue_url);
         }
-        else
+        else {
             console.log('Not working on any issue');
+            process.exit(1);
+        }
     });
 }));
 program
@@ -323,12 +333,12 @@ program
         console.log('  By default, what branch are you going to target your pull requests to?');
         console.log('  Note using the option "--base <branch>" you can override this whenever you want!');
         const develop = yield input();
-        child_process_1.execSync(`git config --unset-all --global user.username || true`);
-        child_process_1.execSync(`git config --add --global user.username ${username}`);
-        child_process_1.execSync(`git config --unset-all --global user.token || true`);
-        child_process_1.execSync(`git config --add --global user.token ${token}`);
-        child_process_1.execSync(`git config --unset-all --global gitflow.develop || true`);
-        child_process_1.execSync(`git config --add --global gitflow.develop ${develop}`);
+        child_process_1.spawnSync('git', ['config', '--unset-all', '--global', 'user.username']);
+        child_process_1.spawnSync('git', ['config', '--add', '--global', 'user.username', username]);
+        child_process_1.spawnSync('git', ['config', '--unset-all', '--global', 'user.token']);
+        child_process_1.spawnSync('git', ['config', '--add', '--global', 'user.token', token]);
+        child_process_1.spawnSync('git', ['config', '--unset-all', '--global', 'gitflow.develop']);
+        child_process_1.spawnSync('git', ['config', '--add', '--global', 'gitflow.develop', develop]);
         console.log('  You have been set up to use the git hub CLI!');
         console.log('  Now you can create pull requests assigned to issues with ease');
         console.log('  When you are working on an issue you can set it as the default');
