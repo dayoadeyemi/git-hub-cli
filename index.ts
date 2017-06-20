@@ -43,8 +43,8 @@ if (!(config.gitflow && config.gitflow.develop)) config.gitflow = { develop: 'ma
 
 let match;
 if (config.remote && config.remote.origin && config.remote.origin.url &&
-  ((match = config.remote.origin.url.match(/https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\.git/)) ||
-    (match = config.remote.origin.url.match(/git@github.com:([^\/]+)\/([^\/]+)\.git/)))) {
+  ((match = config.remote.origin.url.match(/https?:\/\/github\.com\/([^\/]+)\/([^\/]+)(?:\.git)?/)) ||
+    (match = config.remote.origin.url.match(/git@github.com:([^\/]+)\/([^\/]+)(?:\.git)?/)))) {
   current.owner = match[1];
   current.repo = match[2];
 } else {
