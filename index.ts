@@ -30,9 +30,7 @@ marked.setOptions({
 });
 
 const current = {
-  branch: execSync('git rev-parse --abbrev-ref HEAD')
-    .toString()
-    .trim(),
+  branch: '',
   owner: '',
   repo: '',
   issue_url: config.hub && config.hub.issue && config.hub.issue.url || '',
@@ -51,6 +49,15 @@ if (config.remote && config.remote.origin && config.remote.origin.url &&
   Object.defineProperties(current, {
     owner: { get(){ throw new Error('Must be in a repo with a github origin!'); } },
     repo: { get(){ throw new Error('Must be in a repo with a github origin!'); } },
+  });
+}
+try {
+  current.branch = execSync('git rev-parse --abbrev-ref HEAD')
+    .toString()
+    .trim()
+} catch (e) {
+  Object.defineProperties(current, {
+    branch: { get(){ throw new Error('Must be in a repo with a github origin!'); } },
   });
 }
 type Method = 'POST' | 'PATCH' | 'GET'

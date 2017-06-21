@@ -35,9 +35,7 @@ marked.setOptions({
     renderer: new TerminalRenderer()
 });
 const current = {
-    branch: child_process_1.execSync('git rev-parse --abbrev-ref HEAD')
-        .toString()
-        .trim(),
+    branch: '',
     owner: '',
     repo: '',
     issue_url: config_1.config.hub && config_1.config.hub.issue && config_1.config.hub.issue.url || '',
@@ -56,6 +54,16 @@ else {
     Object.defineProperties(current, {
         owner: { get() { throw new Error('Must be in a repo with a github origin!'); } },
         repo: { get() { throw new Error('Must be in a repo with a github origin!'); } },
+    });
+}
+try {
+    current.branch = child_process_1.execSync('git rev-parse --abbrev-ref HEAD')
+        .toString()
+        .trim();
+}
+catch (e) {
+    Object.defineProperties(current, {
+        branch: { get() { throw new Error('Must be in a repo with a github origin!'); } },
     });
 }
 function makeGitHubRequest(method, path, postData) {
