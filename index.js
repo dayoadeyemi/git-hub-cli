@@ -47,8 +47,8 @@ if (!(config_1.config.gitflow && config_1.config.gitflow.develop))
     config_1.config.gitflow = { develop: 'master' };
 let match;
 if (config_1.config.remote && config_1.config.remote.origin && config_1.config.remote.origin.url &&
-    ((match = config_1.config.remote.origin.url.match(/https?:\/\/github\.com\/([^\/]+)\/([^\/]+)(?:\.git)?/)) ||
-        (match = config_1.config.remote.origin.url.match(/git@github.com:([^\/]+)\/([^\/]+)(?:\.git)?/)))) {
+    ((match = config_1.config.remote.origin.url.match(/https?:\/\/github\.com\/([^\/]+)\/([^\.]+)?/)) ||
+        (match = config_1.config.remote.origin.url.match(/git@github.com:([^\/]+)\/([^\.]+)?/)))) {
     current.owner = match[1];
     current.repo = match[2];
 }
@@ -177,6 +177,10 @@ ${PR.body.split('\n').map($ => '> ' + $)}
         else if (action == 'show') {
             const pr = yield getCurrentPr();
             showMarkdown(yield showPr(pr));
+        }
+        else if (action == 'status') {
+            const statuses = yield makeGitHubRequest('GET', `/repos/${current.owner}/${current.repo}/commits/${current.branch}/statuses`);
+            console.log(statuses);
             // } else if (action == 'show-comments') {
             //   const pr = await getCurrentPr() as GitHubObject
             //   console.log(pr)
@@ -273,7 +277,7 @@ function showIssue(issue_url) {
                 console.log('    Title: ' + title);
                 console.log('    Url: https://' + url);
                 showMarkdown(json.body);
-                return { url, title, owner, repo, number };
+                return { url: issue_url, title, owner, repo, number };
             }
             catch (e) {
                 throw new Error('Failed to get the issue from GitHub');
