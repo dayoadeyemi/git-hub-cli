@@ -30,7 +30,7 @@ marked.setOptions({
 });
 
 const current = {
-  branch: execSync('git rev-parse --abbrev-ref HEAD || true')
+  branch: execSync('git rev-parse --abbrev-ref HEAD')
     .toString()
     .trim(),
   owner: '',
@@ -181,9 +181,6 @@ ${PR.body.split('\n').map($ => '> ' + $)}
       const pr = await getCurrentPr() as GitHubObject
       showMarkdown(await showPr(pr))
     } else if (action == 'status') {
-      if (!current.branch) {
-        throw new Error('Must be on a git branch to check its status')
-      }
       const statuses = await makeGitHubRequest('GET', `/repos/${current.owner}/${current.repo}/commits/${current.branch}/statuses`) as any[]
       console.log(statuses)
     // } else if (action == 'show-comments') {

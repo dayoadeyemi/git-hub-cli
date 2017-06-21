@@ -35,7 +35,7 @@ marked.setOptions({
     renderer: new TerminalRenderer()
 });
 const current = {
-    branch: child_process_1.execSync('git rev-parse --abbrev-ref HEAD || true')
+    branch: child_process_1.execSync('git rev-parse --abbrev-ref HEAD')
         .toString()
         .trim(),
     owner: '',
@@ -179,9 +179,6 @@ ${PR.body.split('\n').map($ => '> ' + $)}
             showMarkdown(yield showPr(pr));
         }
         else if (action == 'status') {
-            if (!current.branch) {
-                throw new Error('Must be on a git branch to check its status');
-            }
             const statuses = yield makeGitHubRequest('GET', `/repos/${current.owner}/${current.repo}/commits/${current.branch}/statuses`);
             console.log(statuses);
             // } else if (action == 'show-comments') {
