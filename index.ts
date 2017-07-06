@@ -262,13 +262,17 @@ function showMarkdown(doc: string){
   }
 }
 
+function parseIssue(issue_url){
+  const match = issue_url.match(/github\.com\/(\w+)\/(\w+)\/issues\/(\d+)$/)
+  if (!match){
+    throw new Error('Not a vaild git hub issue url')
+  }
+  return match
+}
+
 async function showIssue(issue_url){
   if (tty.isatty(1)) {
-    const match = issue_url.match(/github\.com\/(\w+)\/(\w+)\/issues\/(\d+)$/)
-    if (!match){
-      throw new Error('Not a vaild git hub issue url')
-    }
-    const [url, owner, repo, number] = match
+    const [url, owner, repo, number] = parseIssue(issue_url)
     let title: string
     try {
       const json = await repoReq('GET', 'issues', { owner, repo }, [number])
@@ -301,6 +305,64 @@ program
     else console.log('Not working on any issue')
     clearCurrentIssue()
   });
+
+function toValidBranchName(str){
+  return str
+  .replace(/\s/g, '_')
+  .replace(/\\/g, '')
+  .replace(/:/g, '')
+  .replace(/,/g, '')
+  .replace(/,@{/g, '')
+  .replace(/\*/g, '')
+  .replace(/\?/g, '')
+  .replace(/\.+/g, '')
+  .replace(/.lock$/g, '')
+  .replace(/\/$/g, '')
+}
+program
+  .command('checkout [issue_url]')
+  .description('checkout the the issue')
+  .option("--type <type>", 'feature or hotfix', 'feature')
+  .action(handleAsyc(async function (issue_url, command) {
+    issue_url = issue_url || current.issue_url
+    if (issue_url) {
+      const prs = (await searchGitHub({
+        type:'pr',
+        user: current.owner,
+        in: 'body'
+      }, issue_url))
+      let branch
+      let named_pr = prs.items.find(pr => pr.title.indexOf('feature/') === 0 || pr.title.indexOf('hotfix/') === 0)
+      if (named_pr) {
+        branch = named_pr.title
+      } else if (prs.items.length){
+        const PR = await makeGitHubRequest('GET', prs.items[0].pull_request.url.replace(/https?:\/\/api.github.com/,'')) as any
+        branch = PR.head.ref
+      } else {
+        const [url, owner, repo, number] = parseIssue(issue_url)
+        const json = await repoReq('GET', 'issues', { owner, repo }, [number])
+        branch =
+          json.title.indexOf('feature/') === 0 || json.title.indexOf('hotfix/') === 0 ? json.title
+          : command.opts().type + '/' + json.title
+      }
+      branch = toValidBranchName(branch)
+      const checkout = spawnSync('git', ['checkout', branch])
+      if (checkout.stdout.length) {
+        console.log(checkout.stdout.toString())
+        return;
+      }
+      const create = spawnSync('git', ['checkout', '-b', branch, config.gitflow.develop])
+      if (create.stdout.length) {
+        console.log(create.stdout.toString())
+        return;
+      } else {
+        console.log(create.stderr.toString())
+      } 
+    } else {
+      console.log('Not working on any issue')
+      process.exit(1)
+    }
+  }));
 
 program
   .command('show [issue_url]')
